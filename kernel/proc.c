@@ -295,6 +295,8 @@ fork(void)
     return -1;
   }
   np->sz = p->sz;
+  // Copy trace mask form parent to child
+  np->trace_mask = p->trace_mask;
 
   // copy saved user registers.
   *(np->trapframe) = *(p->trapframe);
