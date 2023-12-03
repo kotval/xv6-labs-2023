@@ -171,7 +171,8 @@ syscall(void)
     // and store its return value in p->trapframe->a0
     p->trapframe->a0 = syscalls[num]();
     // print if syscall is to be traced
-    if(num&(p->trace_mask)){
+    int current_syscall = 1 << num;
+    if(current_syscall&(p->trace_mask)){
       printf("%d: syscall %s -> %d\n", p->pid, syscall_names[num], p->trapframe->a0);
     }
   } else {
