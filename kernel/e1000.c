@@ -103,6 +103,20 @@ e1000_transmit(struct mbuf *m)
   // a pointer so that it can be freed after sending.
   //
   
+  printf("e1000_transmit");
+  int i = regs[E1000_TDT];
+  if (0 != (tx_ring[i].status & E1000_TXD_STAT_DD))
+    panic("e1000 transmit ring overflow");
+  else{
+    // TODO: only free if exists/legit
+    if (tx_mbufs[i]) {
+      mbuffree(tx_mbufs[i]);
+    }
+    tx_ring[i].addr = (uint64)m->buf;
+    tx_ring[i].length = m->len;
+    tx_mbufs[i] = m;
+    regs[E1000_TCTL] |= E1000_TXD_CMD_RS;
+  }
   return 0;
 }
 
@@ -115,6 +129,9 @@ e1000_recv(void)
   // Check for packets that have arrived from the e1000
   // Create and deliver an mbuf for each packet (using net_rx()).
   //
+
+  //rx_ring[]
+  //rx_mbufs
 }
 
 void
