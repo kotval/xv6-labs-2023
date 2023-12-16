@@ -105,17 +105,31 @@ e1000_transmit(struct mbuf *m)
   
   printf("e1000_transmit");
   int i = regs[E1000_TDT];
-  if (0 != (tx_ring[i].status & E1000_TXD_STAT_DD))
-    panic("e1000 transmit ring overflow");
-  else{
-    // TODO: only free if exists/legit
-    if (tx_mbufs[i]) {
+  if (!(E1000_TXD_STAT_DD == (tx_ring[i].status & E1000_TXD_STAT_DD))) {
+    panic("e1000");
+  } else {
+    if ((void*)0 != tx_mbufs[i]) {
       mbuffree(tx_mbufs[i]);
     }
     tx_ring[i].addr = (uint64)m->buf;
     tx_ring[i].length = m->len;
+
+    tx_ring[i].cso = 0;
+    tx_ring[i].cmd = E1000_TXD_CMD_EOP | E1000_TXD_CMD_RS;
+    tx_ring[i].status = 0;
+//    tx_ring[i].rsv = 0;
+    tx_ring[i].css = 0;
+    tx_ring[i].special = 0;
+    
     tx_mbufs[i] = m;
-    regs[E1000_TCTL] |= E1000_TXD_CMD_RS;
+//    regs[E1000_TCTL] |= E1000_TXD_CMD_RS;
+
+    // TODO : successfully indicate to hardware that we're finished transmitting
+    // we think we need to set ICS, but that register dont exist
+    // it could be that we need to offset from ICR's address (0xC0) into ICS (0xC8)
+    regs[E1000_IMS] |= 0b1;
+    regs[E1000_ICR] |= 0b1;
+
   }
   return 0;
 }
