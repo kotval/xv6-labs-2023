@@ -105,37 +105,34 @@ e1000_transmit(struct mbuf *m)
  
   acquire(&e1000_lock);
   
-  printf("e1000_transmit");
   //ask for the tx ring index at which it is expecting the next packet
-  int i = regs[E1000_TDT];
+  int desc = regs[E1000_TDT];
+
   //is ring overflowing?
-  if (!(E1000_TXD_STAT_DD == (tx_ring[i].status & E1000_TXD_STAT_DD))) {
+  if (!(E1000_TXD_STAT_DD == (tx_ring[desc].status & E1000_TXD_STAT_DD))) {
     release(&e1000_lock);
     return -1;
-  } else {
-    //free last mbuf transimited from descriptor
-    if ((void*)0 != tx_mbufs[i]) {
-      mbuffree(tx_mbufs[i]);
-    }
-    //fill in the descriptors
-    tx_ring[i].addr = (uint64)m->head;
-    tx_ring[i].length = m->len;
-    tx_ring[i].cso = 0;
-    tx_ring[i].cmd = E1000_TXD_CMD_RS | E1000_TXD_CMD_EOP;
-    tx_ring[i].status = 0;
-    //tx_ring[i].rsv = 0;
-    tx_ring[i].css = 0;
-    tx_ring[i].special = 0;
-    
-    //stash a pointer to the mbuf for later freeing
-    tx_mbufs[i] = m;
 
-    //update ring position
-    regs[E1000_TDT] = (regs[E1000_TDT] + 1) % TX_RING_SIZE;
-
-    release(&e1000_lock);
-    return 0;
   }
+  
+  //free last mbuf transimited from descriptor
+  if ((void*)0 != tx_mbufs[desc]) {
+    mbuffree(tx_mbufs[desc]);
+  }
+  
+  //fill in the descriptors
+  tx_ring[desc].addr = (uint64)m->head;
+  tx_ring[desc].length = m->len;
+  tx_ring[desc].cmd = E1000_TXD_CMD_RS | E1000_TXD_CMD_EOP;
+  
+  //stash a pointer to the mbuf for later freeing
+  tx_mbufs[desc] = m;
+
+  //update ring position
+  regs[E1000_TDT] = (regs[E1000_TDT] + 1) % TX_RING_SIZE;
+
+  release(&e1000_lock);
+  return 0;
 }
 
 static void
@@ -150,7 +147,7 @@ e1000_recv(void)
 
   //rx_ring[]
   //rx_mbufs
-  printf("something got on them wires");
+  printf("e1000_recv");
 }
 
 void
