@@ -95,14 +95,6 @@ e1000_init(uint32 *xregs)
 int
 e1000_transmit(struct mbuf *m)
 {
-  //
-  // Your code here.
-  //
-  // the mbuf contains an ethernet frame; program it into
-  // the TX descriptor ring so that the e1000 sends it. Stash
-  // a pointer so that it can be freed after sending.
-  //
- 
   acquire(&e1000_lock);
   
   //ask for the tx ring index at which it is expecting the next packet
@@ -139,15 +131,27 @@ static void
 e1000_recv(void)
 {
   //
-  // Your code here.
-  //
   // Check for packets that have arrived from the e1000
   // Create and deliver an mbuf for each packet (using net_rx()).
   //
 
-  //rx_ring[]
-  //rx_mbufs
-  printf("e1000_recv");
+  acquire(&e1000_lock);
+  
+  // get the descriptor we're gonna read from (RDT)
+  int rd = (regs[E1000_RDT] + 1) % RX_RING_SIZE;
+  
+  // make sure this packet is fully formed
+  while (E1000_RXD_STAT_DD == (rx_ring[rd].status & E1000_RXD_STAT_DD)) {
+    // release
+    // send it along to net_rx
+    net_rx(rx_mbufs[rd]);
+    // acquire
+    
+    rd = (rd + 1) % RX_RING_SIZE;
+  }
+  release(&e1000_lock);
+  
+  
 }
 
 void
