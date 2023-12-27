@@ -144,8 +144,7 @@ e1000_recv(void)
   // DD and EOP mean a single packet is ready in the mbuf
   // where as only a DD means that the descriptor is only part of a chain of
   // messages. TODO: handle both cases?
-  while ((E1000_RXD_STAT_DD == (rx_ring[rd].status & E1000_RXD_STAT_DD))
-        & (E1000_RXD_STAT_EOP == (rx_ring[rd].status & E1000_RXD_STAT_EOP))) {
+  while (E1000_RXD_STAT_DD == (rx_ring[rd].status & E1000_RXD_STAT_DD)) {
     struct mbuf *m = rx_mbufs[rd];
     m->len = rx_ring[rd].length;
     // send it along to net_rx
@@ -157,10 +156,10 @@ e1000_recv(void)
     if (!rx_mbufs[rd])
       panic("e1000");
     rx_ring[rd].addr = (uint64) rx_mbufs[rd]->head;
-    //update E1000_RDT
-    regs[E1000_RDT] = rd;
     //unset the status of the descriptor just used so that it can be reused
     rx_ring[rd].status = 0x00;
+    //update E1000_RDT
+    regs[E1000_RDT] = rd;
     //continue processing packets until status is not set
     rd = (rd + 1) % RX_RING_SIZE;
   }
