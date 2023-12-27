@@ -136,22 +136,35 @@ e1000_recv(void)
   //
 
   acquire(&e1000_lock);
-  
+
   // get the descriptor we're gonna read from (RDT)
   int rd = (regs[E1000_RDT] + 1) % RX_RING_SIZE;
   
   // make sure this packet is fully formed
-  while (E1000_RXD_STAT_DD == (rx_ring[rd].status & E1000_RXD_STAT_DD)) {
-    // release
+  // DD and EOP mean a single packet is ready in the mbuf
+  // where as only a DD means that the descriptor is only part of a chain of
+  // messages. TODO: handle both cases?
+  while ((E1000_RXD_STAT_DD == (rx_ring[rd].status & E1000_RXD_STAT_DD))
+        & (E1000_RXD_STAT_EOP == (rx_ring[rd].status & E1000_RXD_STAT_EOP))) {
+    struct mbuf *m = rx_mbufs[rd];
+    m->len = rx_ring[rd].length;
     // send it along to net_rx
-    net_rx(rx_mbufs[rd]);
-    // acquire
-    
+    release(&e1000_lock);
+    net_rx(m);
+    acquire(&e1000_lock);
+    //make new mbuf to replace one just used
+    rx_mbufs[rd] = mbufalloc(0);
+    if (!rx_mbufs[rd])
+      panic("e1000");
+    rx_ring[rd].addr = (uint64) rx_mbufs[rd]->head;
+    //update E1000_RDT
+    regs[E1000_RDT] = rd;
+    //unset the status of the descriptor just used so that it can be reused
+    rx_ring[rd].status = 0x00;
+    //continue processing packets until status is not set
     rd = (rd + 1) % RX_RING_SIZE;
   }
   release(&e1000_lock);
-  
-  
 }
 
 void
